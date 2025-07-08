@@ -40,80 +40,120 @@ print(f"Critical J ≈ {Jc:.3f}")
 
 ## Analytical formulation
 
-This section collects the exact equations implemented in the code so that you can reproduce every number analytically or port the algorithm to a different language.
+Below we list the exact algebra implemented in the code so that every number
+can be reproduced on paper or in another language.
 
 ### Legendre–Fourier (LFC) representation
 
-For each nearest-neighbour bond we expand the Boltzmann weight
+For a nearest-neighbour bond the Boltzmann weight is
 
-\[ W(\theta) = \exp\bigl[J\,\mathbf S_i\!\cdot\!\mathbf S_j\bigr] \]
+$$
+W(\theta)=\exp\bigl[J\,\mathbf S_i\!\cdot\!\mathbf S_j\bigr].
+$$
 
-in Legendre polynomials,
+Expanding in Legendre polynomials gives
 
-\[ W(\theta) = \sum*{\ell=0}^{\ell*\text{max}} L*\ell P*\ell(\cos\theta), \quad L*\ell = (2\ell+1)\,i^{\,\ell}\, j*\ell(-iJ), \]
+$$
+W(\theta)=\sum_{\ell=0}^{\ell_\text{max}} L_{\ell} P_{\ell}(\cos\theta),
+\qquad
+L_{\ell}=(2\ell+1)\,i^{\,\ell}\,j_{\ell}(-iJ),
+$$
 
-with the spherical Bessel function \(j\_\ell\). The RG “pool” therefore stores vectors
+where $j_{\ell}$ is the spherical Bessel function. Each bond is therefore
+represented by the vector
 
-\[ \mathbf L = \bigl(L*0,\dots,L*{\ell\_\text{max}}\bigr). \]
+$$
+\mathbf L = (L_0,\dots,L_{\ell_\text{max}}).
+$$
 
 ### Star–triangle (decimation) transformation
 
-Given three bonds `lfc1`, `lfc2`, `lfc3` arranged in a triangle we replace them by one effective bond
+Given three bonds $\mathbf L^{(1)},\mathbf L^{(2)},\mathbf L^{(3)}$ arranged
+in a triangle, they are replaced by a single effective bond with coefficients
 
-\[ L^{\text{dec}}_\ell = \frac{L^{(1)}_\ell L^{(2)}_\ell L^{(3)}_\ell}{(2\ell+1)^2}. \]
+$$
+L^{\text{dec}}_{\ell}=\frac{L^{(1)}_{\ell}\,L^{(2)}_{\ell}\,L^{(3)}_{\ell}}{(2\ell+1)^2}.
+$$
 
-With vacancies (bond-dilution) the transformation becomes
+With vacancies the rule becomes
 
-\[
+$$
 \begin{aligned}
-L^{\prime}_\ell &= \mathrm e^{-4\Delta}\,\frac{L^{(1)}_\ell L^{(2)}_\ell L^{(3)}_\ell}{(2\ell+1)^2}, & \ell>0, \\
-L^{\prime}\_0 &= \mathrm e^{-4\Delta} L^{(1)}\_0 L^{(2)}\_0 L^{(3)}\_0 + 1 + \mathrm e^{-2\Delta}\bigl(L^{(2)}\_0 + L^{(3)}\_0\bigr).
+L'_{\ell} &= e^{-4\Delta}
+            \frac{L^{(1)}_{\ell}\,L^{(2)}_{\ell}\,L^{(3)}_{\ell}}{(2\ell+1)^2},
+            && \ell>0,\\[4pt]
+L'_0 &= e^{-4\Delta} L^{(1)}_0 L^{(2)}_0 L^{(3)}_0
+       + 1
+       + e^{-2\Delta}\bigl(L^{(2)}_0 + L^{(3)}_0\bigr).
 \end{aligned}
-\]
+$$
 
 ### Bond-move transformation
 
-Moving a bond across a site combines two LFCs through the reduced Gaunt tensor
+Moving a bond across a site combines two LFCs through the (reduced) Gaunt
+tensor:
 
-\[ L^{\prime}_\ell = \sum_{\ell*1,\ell_2} L^{(1)}*{\ell*1}\,L^{(2)}*{\ell*2}\,G*{\ell*1\ell_2\ell}, \qquad G*{\ell_1\ell_2\ell}=2\Bigl(\begin{smallmatrix} \ell_1 & \ell_2 & \ell \\ 0 & 0 & 0 \end{smallmatrix}\Bigr)^2. \]
+$$
+L'_{\ell}=\sum_{\ell_1,\ell_2} L^{(1)}_{\ell_1}\,L^{(2)}_{\ell_2}\,G_{\ell_1\ell_2\ell},
+\qquad
+G_{\ell_1\ell_2\ell}=2\!
+\begin{pmatrix}
+\ell_1 & \ell_2 & \ell\\
+0       & 0      & 0
+\end{pmatrix}^2.
+$$
 
 ### Normalisation and scale factor
 
-After **every** decimation or bond-move we divide by the max-norm
-\(\Lambda=\max*{\ell}|L^{\prime}*\ell|\) and store \(\ln\Lambda\). Optionally, the controller rescales the vector once more to unit Euclidean norm when it is constructed with `norm="l2"`.
+After **every** decimation or bond move we divide by
+
+$$
+\Lambda=\max_{\ell}|L'_{\ell}|
+$$
+
+and store $\ln\Lambda$. When the controller is created with
+`norm="l2"` the vector is subsequently rescaled to unit Euclidean norm.
 
 ### RG generation
 
-A generation consists of a star–triangle decimation followed by \(n*{\text{bm}}-1\) bond moves.
-The lattice spacing grows by the block-size \(b=n*{\text{bm}}\).
+One RG generation consists of a star–triangle decimation followed by
+$n_{\text{bm}}-1$ bond moves. The lattice spacing therefore grows by the
+block-size $b=n_{\text{bm}}$.
 
 ### Vacancy parameter flow
 
-The vacancy parameter starts at
+The vacancy parameter is initialised as
 
-\[ \Delta_0 = g J. \]
+$$
+\Delta_0 = g\,J.
+$$
 
-After each generation we compute the mean scale factor
-\(\langle \ln\Lambda \rangle\) over **all** decimations and bond moves performed in that generation and update
+After generation $n$ we average the recorded scale factors and update
 
-\[ \boxed{\;\Delta\_{n+1} = 2\,\Delta_n\; - \; \langle \ln\Lambda \rangle_n\;} \]
+$$
+\boxed{\;\Delta_{n+1}=2\,\Delta_n-\langle\ln\Lambda\rangle_n\;}
+$$
 
-(the factor 2 reflects the halving of each bond’s length when coarse-graining a cubic lattice).
+(the factor 2 reflects the doubling of the lattice spacing in three
+dimensions).
 
 ### Free energy and thermodynamic observables
 
 We accumulate the generation subtotal
 
-\[ G*n = \sum*{\text{ops in }n}\! \ln\Lambda, \]
+$$
+G_n = \sum_{\text{ops in }n}\!\ln\Lambda
+$$
 
-and obtain the dimensionless free-energy density
+and form the dimensionless free-energy density
 
-\[ f = \sum\_{n=0}^{\infty} \frac{G_n}{b^{d n}}, \]
+$$
+f=\sum_{n=0}^{\infty}\frac{G_n}{b^{d n}},
+$$
 
-where \(d\) is the spatial dimension. Numerical derivatives give
-
--   internal energy \(u = \partial f/\partial J\),
--   specific heat \(c = \partial^2 f/\partial J^2\).
+where $d$ is the spatial dimension. Numerical derivatives of $f$ give the
+internal energy $u=\partial f/\partial J$ and specific heat
+$c=\partial^2 f/\partial J^2$.
 
 ## Data file: `cleb.npy`
 
