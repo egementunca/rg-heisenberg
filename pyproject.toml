@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rg-heisenberg"
+version = "0.0.0"
+description = "Renormalization-Group flows for the classical Heisenberg model."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+  {name = "Your Name", email = "you@example.com"}
+]
+dependencies = [
+  "numpy>=1.23",
+  "numba>=0.56",
+  "scipy>=1.8",
+  "sympy>=1.12",
+  "matplotlib>=3.7",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourname/rg-heisenberg"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"rgheisenberg" = ["*.npy"] 
