@@ -19,6 +19,7 @@ __all__ = [
     "bond_move",
     "bond_move_log",
     "decimate3",
+    "decimate2",
     "decimateVacancy",
 ]
 
@@ -28,6 +29,7 @@ __all__ = [
 # These coefficients are stored externally to keep the repository size small.
 # We attempt to locate them relative to this file; users should place
 # ``cleb.npy`` in one of the searched paths or provide their own.
+# See https://docs.sympy.org/latest/modules/physics/wigner.html for more details.
 _CLEB_PATHS: Final[list[Path]] = [
     Path(__file__).with_name("cleb.npy"),  # same directory
     Path(__file__).parent / "../data/cleb.npy",  # legacy location
@@ -51,7 +53,7 @@ else:
             for l in range(abs(l1 - l2), min(l1 + l2, LMAX) + 1):
                 w = float(wigner_3j(l1, l2, l, 0, 0, 0))
                 # Gaunt formula:  G = 2 * (3-j)^2
-                _cg[l1, l2, l] = 2.0 * w * w
+                _cg[l1, l2, l] = (2 * l + 1) * w * w
 
     np.save(Path(__file__).with_name("cleb.npy"), _cg)
 
@@ -100,7 +102,7 @@ def bond_move(lfc1: np.ndarray, lfc2: np.ndarray):  # noqa: D401
     """Bond-move kernel returning *normalized* LFCs and ``log(norm)``."""
     raw = _bond_move_core(lfc1, lfc2, clebsch_gordan)
     y = np.amax(np.abs(raw))
-    return raw / y, float(np.log(y))
+    return raw, float(np.log(y))
 
 
 # Pure log-space version – useful when magnitudes span many orders.
@@ -137,7 +139,17 @@ def decimate3(lfc1: np.ndarray, lfc2: np.ndarray, lfc3: np.ndarray):  # noqa: D4
     odd = 2 * np.arange(l_prec) + 1
     dec = (lfc1 * lfc2 * lfc3) / (odd * odd)
     x = np.amax(np.abs(dec))
-    return dec / x, float(np.log(x))
+    return dec, float(np.log(x))
+
+
+@nb.njit(fastmath=True)
+def decimate2(lfc1: np.ndarray, lfc2: np.ndarray):  # noqa: D401
+    """Decimation kernel for b=2 scaling using 2 LFC vectors."""
+    l_prec = lfc1.shape[0]
+    odd = 2 * np.arange(l_prec) + 1
+    dec = (lfc1 * lfc2) / odd
+    x = np.amax(np.abs(dec))
+    return dec, float(np.log(x))
 
 
 @nb.njit()

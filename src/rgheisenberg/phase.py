@@ -88,7 +88,7 @@ def _run_rg(
 
 def find_critical_J(
     *,
-    ctrl_factory: Callable[[], RGController],
+    ctrl_factory: Callable[[bool], RGController],
     predicate: Callable[[np.ndarray], bool] = default_order_predicate,
     J_lo: float,
     J_hi: float,
@@ -98,6 +98,8 @@ def find_critical_J(
     steps: int = 25,
     max_iter: int = 25,
     tol: float = 1e-3,
+    annealed: bool = False,
+    bond_move_first: bool = False,
 ) -> float:
     """Binary-search the critical *J* where *predicate* flips.
 
@@ -105,6 +107,7 @@ def find_critical_J(
     ----------
     ctrl_factory
         Callable returning a *fresh* :class:`RGController` for each probe.
+        Should accept a boolean parameter for bond_move_first.
     predicate
         Function evaluated on the final RG pool; should return *True* on the
         *ordered* side of the transition.
@@ -120,8 +123,8 @@ def find_critical_J(
         Relative tolerance on the interval width.
     """
 
-    pred_lo = predicate(_run_rg(ctrl_factory(), steps, J=J_lo, p=p, q=q, g=g, annealed=True))
-    pred_hi = predicate(_run_rg(ctrl_factory(), steps, J=J_hi, p=p, q=q, g=g, annealed=True))
+    pred_lo = predicate(_run_rg(ctrl_factory(bond_move_first), steps, J=J_lo, p=p, q=q, g=g, annealed=annealed))
+    pred_hi = predicate(_run_rg(ctrl_factory(bond_move_first), steps, J=J_hi, p=p, q=q, g=g, annealed=annealed))
 
     if pred_lo == pred_hi:
         raise ValueError("Predicate does not change over the initial bracket.")
@@ -129,7 +132,7 @@ def find_critical_J(
     for _ in range(max_iter):
         J_mid = 0.5 * (J_lo + J_hi)
         pred_mid = predicate(
-            _run_rg(ctrl_factory(), steps, J=J_mid, p=p, q=q, g=g, annealed=True)
+            _run_rg(ctrl_factory(bond_move_first), steps, J=J_mid, p=p, q=q, g=g, annealed=annealed)
         )
         if pred_mid == pred_lo:
             J_lo = J_mid
@@ -150,7 +153,7 @@ def find_critical_J(
 
 def find_critical_g(
     *,
-    ctrl_factory: Callable[[], RGController],
+    ctrl_factory: Callable[[bool], RGController],
     predicate: Callable[[np.ndarray], bool] = default_order_predicate,
     g_lo: float,
     g_hi: float,
@@ -160,11 +163,13 @@ def find_critical_g(
     steps: int = 25,
     max_iter: int = 25,
     tol: float = 1e-3,
+    annealed: bool = False,
+    bond_move_first: bool = False,
 ) -> float:
     """Binary-search the critical *g* (Δ/J) keeping *J* fixed."""
 
-    pred_lo = predicate(_run_rg(ctrl_factory(), steps, J=J, p=p, q=q, g=g_lo, annealed=True))
-    pred_hi = predicate(_run_rg(ctrl_factory(), steps, J=J, p=p, q=q, g=g_hi, annealed=True))
+    pred_lo = predicate(_run_rg(ctrl_factory(bond_move_first), steps, J=J, p=p, q=q, g=g_lo, annealed=annealed))
+    pred_hi = predicate(_run_rg(ctrl_factory(bond_move_first), steps, J=J, p=p, q=q, g=g_hi, annealed=annealed))
 
     if pred_lo == pred_hi:
         raise ValueError("Predicate does not change over the initial bracket.")
@@ -172,7 +177,7 @@ def find_critical_g(
     for _ in range(max_iter):
         g_mid = 0.5 * (g_lo + g_hi)
         pred_mid = predicate(
-            _run_rg(ctrl_factory(), steps, J=J, p=p, q=q, g=g_mid, annealed=True)
+            _run_rg(ctrl_factory(bond_move_first), steps, J=J, p=p, q=q, g=g_mid, annealed=annealed)
         )
         if pred_mid == pred_lo:
             g_lo = g_mid
@@ -189,12 +194,14 @@ def find_critical_g(
 def scan_vertical_boundary(
     J_values: Sequence[float],
     *,
-    ctrl_factory: Callable[[], RGController],
+    ctrl_factory: Callable[[bool], RGController],
     fixed_params: dict,
     predicate: Callable[[np.ndarray], bool] = default_order_predicate,
     steps: int = 25,
     max_iter: int = 25,
     tol: float = 1e-3,
+    annealed: bool = False,
+    bond_move_first: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """For every *J* in ``J_values`` find critical *g* (vertical line)."""
 
@@ -209,6 +216,8 @@ def scan_vertical_boundary(
             max_iter=max_iter,
             tol=tol,
             J=J,
+            annealed=annealed,
+            bond_move_first=bond_move_first,
             **params,
         )
 
@@ -223,12 +232,14 @@ def scan_vertical_boundary(
 def scan_phase_boundary(
     varied: Sequence[float],
     *,
-    ctrl_factory: Callable[[], RGController],
+    ctrl_factory: Callable[[bool], RGController],
     fixed_params: dict,  # J bounds + other physics params
     predicate: Callable[[np.ndarray], bool] = default_order_predicate,
     steps: int = 25,
     max_iter: int = 25,
     tol: float = 1e-3,
+    annealed: bool = False,
+    bond_move_first: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Compute a critical line over *varied* parameter values.
 
@@ -257,6 +268,8 @@ def scan_phase_boundary(
             steps=steps,
             max_iter=max_iter,
             tol=tol,
+            annealed=annealed,
+            bond_move_first=bond_move_first,
             **params,
         )
 

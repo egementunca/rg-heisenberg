@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 from typing import Tuple, List
+import warnings
 
 from .controller import RGController
 
@@ -22,14 +23,21 @@ def normalize_pool(ctrl: RGController) -> np.ndarray:
     return ctrl.get_pool()
 
 
-def phase_diagram(ctrl: RGController, steps: int) -> Tuple[List[np.ndarray], np.ndarray]:
-    """Run *steps* RG iterations and collect the pool trajectory.
+def pool_trajectory(ctrl: RGController, steps: int) -> Tuple[List[np.ndarray], np.ndarray]:
+    """Return list of pool snapshots and log‐norms after *steps* RG iterations."""
 
-    No plotting is performed here—only minimal data collection suitable for
-    downstream visualisation routines.
-    """
     pools: List[np.ndarray] = [ctrl.get_pool()]
     for _ in range(steps):
         ctrl.step()
         pools.append(ctrl.get_pool())
-    return pools, np.asarray(ctrl._log_norms) 
+    return pools, np.asarray(ctrl._log_norms)
+
+
+def phase_diagram(ctrl: RGController, steps: int):  # noqa: D401
+    """DEPRECATED – use :pyfunc:`pool_trajectory` instead."""
+    warnings.warn(
+        "analysis.phase_diagram() is deprecated; use pool_trajectory() instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return pool_trajectory(ctrl, steps) 
